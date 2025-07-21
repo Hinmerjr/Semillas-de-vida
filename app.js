@@ -1,127 +1,81 @@
-const nombreUsuario = localStorage.getItem("nombreUsuario") || "Anónimo";
-document.getElementById("saludo").innerText =
-  `Bienvenido de nuevo, ${nombreUsuario}. Hoy te espera una nueva semilla.`;
-
-// Activar música tras primer clic
-window.addEventListener("click", () => {
-  const audio = document.getElementById("musica");
-  if (audio && audio.paused) {
-    audio.play().catch(() => console.log("Autoplay bloqueado por el navegador."));
-  }
-});
-
-// Leer en voz
-function hablar(texto) {
-  const voz = new SpeechSynthesisUtterance(texto);
-  voz.lang = "es-ES";
-  voz.rate = 0.9;
-  speechSynthesis.speak(voz);
-}
-
-// Cargar cita desde JSON
-fetch("./citas.json")
-  .then(res => res.json())
-  .then(data => {
-    const ciclo = JSON.parse(localStorage.getItem("cicloCitas")) || [];
-    let restantes = data.filter((_, i) => !ciclo.includes(i));
-
-    if (restantes.length === 0) {
-      localStorage.setItem("cicloCitas", "[]");
-      restantes = data;
-    }
-
-    const indice = Math.floor(Math.random() * restantes.length);
-    const cita = restantes[indice];
-
-    document.getElementById("cita").innerText = cita.texto;
-    document.getElementById("reflexion").innerText = cita.reflexion;
-    hablar(`${cita.texto}. ${cita.reflexion}`);
-
-    const nuevoCiclo = [...ciclo, data.indexOf(cita)];
-    localStorage.setItem("cicloCitas", JSON.stringify(nuevoCiclo));
-  })
-  .catch(() => {
-    document.getElementById("cita").innerText = "⛔ Error al cargar la cita.";
-    document.getElementById("reflexion").innerText = "Verifica el archivo 'citas.json'.";
-  });
-
-// Reacciones únicas por usuario
-let likesCita = 0;
-let dislikesCita = 0;
-const reaccionesComentarios = {};
-
-function reaccionar(id, positivo) {
-  const key = `reaccionado-${id}`;
-  if (localStorage.getItem(key)) {
-    alert("Ya reaccionaste a esta publicación 🌱");
+// Navegación desde la portada
+function iniciarApp() {
+  const nombre = document.getElementById("nombre").value.trim();
+  if (!nombre) {
+    alert("🌱 Por favor escribe tu nombre para comenzar.");
     return;
   }
-  localStorage.setItem(key, positivo ? "like" : "dislike");
-
-  if (id === "cita") {
-    positivo ? likesCita++ : dislikesCita++;
-    document.getElementById("likes-cita").innerText =
-      `${likesCita} 👍 / ${dislikesCita} 👎`;
-  } else {
-    reaccionesComentarios[id] = reaccionesComentarios[id] || { likes: 0, dislikes: 0 };
-    positivo ? reaccionesComentarios[id].likes++ : reaccionesComentarios[id].dislikes++;
-    document.getElementById("likes-" + id).innerText =
-      `${reaccionesComentarios[id].likes} 👍 / ${reaccionesComentarios[id].dislikes} 👎`;
-  }
+  localStorage.setItem("nombreUsuario", nombre);
+  window.location.href = "reflexion.html";
 }
 
-// Comentar
+// En reflexión.html
+document.addEventListener("DOMContentLoaded", () => {
+  const nombre = localStorage.getItem("nombreUsuario");
+  if (nombre) {
+    document.getElementById("saludo").textContent = `🌟 Bienvenido, ${nombre}`;
+  }
+
+  // Mostrar cita desde JSON
+  fetch('citas.json')
+    .then(res => res.json())
+    .then(data => {
+      const cita = data.citas[Math.floor(Math.random() * data.citas.length)];
+      document.getElementById("cita").textContent = cita.texto;
+      document.getElementById("reflexion").textContent = cita.ref;
+
+      // Voz hablada (Web Speech API)
+      const utterance = new SpeechSynthesisUtterance(`${cita.texto}, ${cita.ref}`);
+      utterance.lang = "es-ES";
+      speechSynthesis.speak(utterance);
+    });
+
+  // Mostrar comentarios guardados
+  mostrarComentarios();
+});
+
+// Reacciones simples
+function reaccionar(clave, like) {
+  const campo = document.getElementById("likes-cita");
+  let likes = parseInt(localStorage.getItem("likes") || "0");
+  let dislikes = parseInt(localStorage.getItem("dislikes") || "0");
+
+  if (like) likes++; else dislikes++;
+
+  localStorage.setItem("likes", likes);
+  localStorage.setItem("dislikes", dislikes);
+  campo.textContent = `${likes} 👍 / ${dislikes} 👎`;
+}
+
+// Publicar comentario
 function publicarComentario() {
+  const nombre = localStorage.getItem("nombreUsuario") || "Anónimo";
   const texto = document.getElementById("comentario").value.trim();
-  if (!texto) return alert("Escribe tu comentario antes de publicar.");
-  const id = "comentario" + Date.now();
-  const div = document.createElement("div");
-  div.className = "comentario";
-  div.id = id;
-  div.innerHTML = `<strong>${nombreUsuario}</strong>: ${texto}
-    <div>
-      <button onclick="reaccionar('${id}', true)">👍</button>
-      <button onclick="reaccionar('${id}', false)">👎</button>
-      <span id="likes-${id}">0 👍 / 0 👎</span>
-      <button onclick="borrarComentario('${id}')">🗑️</button>
-    </div>`;
-  document.getElementById("comentarios").prepend(div);
+  if (!texto) return;
+
+  const comentarios = JSON.parse(localStorage.getItem("comentarios") || "[]");
+  comentarios.push({ nombre, texto });
+  localStorage.setItem("comentarios", JSON.stringify(comentarios));
   document.getElementById("comentario").value = "";
+  mostrarComentarios();
 }
 
-// Borrar
-function borrarComentario(id) {
-  const clave = prompt("🔐 Ingresa la clave maestra:");
-  if (clave === "HinmerClave2025") {
-    document.getElementById(id)?.remove();
-  } else {
-    alert("Clave incorrecta.");
-  }
+// Mostrar comentarios
+function mostrarComentarios() {
+  const contenedor = document.getElementById("comentarios");
+  const comentarios = JSON.parse(localStorage.getItem("comentarios") || "[]");
+  contenedor.innerHTML = comentarios.map(c =>
+    `<div class="comentario"><strong>${c.nombre}</strong>: ${c.texto}</div>`
+  ).join("");
 }
 
-// Guardar cita personal
+// Guardar cita y reflexión personal
 function guardarPropia() {
-  const citaP = document.getElementById("citaPersonal").value.trim();
-  const refleP = document.getElementById("reflexionPersonal").value.trim();
+  const cita = document.getElementById("citaPersonal").value.trim();
+  const reflexion = document.getElementById("reflexionPersonal").value.trim();
+  if (!cita || !reflexion) return alert("💬 Completa ambos campos antes de guardar.");
 
-  if (!citaP || !refleP) return alert("Completa ambos campos.");
-  if (citaP.length > 500 || refleP.length > 1000)
-    return alert("Excede el límite permitido.");
-
-  const id = "personal" + Date.now();
-  const div = document.createElement("div");
-  div.className = "comentario";
-  div.id = id;
-  div.innerHTML = `<strong>${nombreUsuario} 🌿 (aporte personal)</strong><br/>
-    <em>${citaP}</em><br/>
-    <p>${refleP}</p>
-    <div>
-      <button onclick="reaccionar('${id}', true)">👍</button>
-      <button onclick="reaccionar('${id}', false)">👎</button>
-      <span id="likes-${id}">0 👍 / 0 👎</span>
-      <button onclick="borrarComentario('${id}')">🗑️</button>
-    </div>`;
-  document.getElementById("comentarios").prepend(div);
+  alert("🌱 ¡Tu aporte ha sido guardado con gratitud!");
   document.getElementById("citaPersonal").value = "";
   document.getElementById("reflexionPersonal").value = "";
 }

@@ -7,9 +7,10 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="app">
-    <h2 id="saludo"></h2>
+  <div class="huerto">
+    <img src="brote.png" alt="Brote espiritual" class="brote" />
 
+    <h2 id="saludo"></h2>
     <blockquote id="cita"></blockquote>
     <p id="reflexion"></p>
 
@@ -17,18 +18,17 @@
     <audio id="musica" src="musica.mp3" loop autoplay></audio>
 
     <div class="reacciones">
-      <button onclick="reaccionar('cita', true)">👍</button>
-      <button onclick="reaccionar('cita', false)">👎</button>
-      <span id="likes-cita">0 👍 / 0 👎</span>
+      <button onclick="reaccionar(true)">👍</button>
+      <button onclick="reaccionar(false)">👎</button>
+      <span id="likes">0 👍 / 0 👎</span>
     </div>
 
     <textarea id="comentario" placeholder="Escribe tu comentario público..."></textarea>
     <button onclick="publicarComentario()">Publicar</button>
-
     <div id="comentarios"></div>
 
     <hr />
-    <h3>✍️ Agrega tu propia cita y reflexión</h3>
+    <h3>✍️ Siembra tu propia semilla</h3>
     <textarea id="citaPersonal" placeholder="Tu cita bíblica (máx. 500 letras)"></textarea>
     <textarea id="reflexionPersonal" placeholder="Tu reflexión (máx. 1000 letras)"></textarea>
     <button onclick="guardarPropia()">Guardar mi aporte</button>
